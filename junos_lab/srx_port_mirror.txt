@@ -1,0 +1,107 @@
+How to config port-mirroring on vSRX (Firefly instance)
+
+vSRX Config
+==================
+forwarding options
+==================
+root@srx3> show configuration forwarding-options
+port-mirroring {
+    input {
+        rate 1;
+        run-length 1;
+    }
+    family inet {
+        output {
+            interface ge-0/0/2.0 {
+                next-hop 192.168.2.20;
+            }
+        }
+    }
+}
+
+==================
+firewall filter
+==================
+root@srx3> show configuration firewall family inet filter port-mirror
+term 1 {
+    then {
+        count port-mirror;
+        port-mirror;
+        accept;
+    }
+}
+
+==================
+Interface Config
+==================
+root@srx3> show configuration interfaces ge-0/0/1
+description "LINK to SRX2";
+unit 0 {
+    family inet {
+        filter {
+            input port-mirror;
+            output port-mirror;
+        }
+        address 10.1.1.3/31;
+    }
+    family mpls;
+}
+
+==========================================================
+Host config
+
+In Vagrant set the host NIC to promiscuous mode in the VagrantFile
+
+==================
+VagrantFile
+==================
+# Jump Box 2
+    config.vm.define "hosts2" do |hosts2|
+        hosts2.vm.box = "ubuntu/xenial64"
+        hosts2.vm.hostname = "hosts2"
+        hosts2.vm.network 'private_network', ip: "192.168.2.20", virtualbox__intnet: "net4" # hosts2 - SRX3
+        hosts2.ssh.insert_key = true
+          hosts2.vm.provider :virtualbox do |vb|
+            vb.customize ["modifyvm", :id, "--nicpromisc1", "allow-all",]
+            vb.memory = 512
+            vb.gui = false
+          end
+        hosts2.vm.provision "shell", inline: <<-SHELL
+        sudo ip route add 192.168.0.0/16 via 192.168.2.1 dev enp0s8
+         SHELL
+    end
+
+==================
+Linux Guest config
+==================
+Set either:
+sysctl -w net.ipv4.ip_forward=0
+OR
+echo 0 > /proc/sys/net/ipv4/ip_forward
+
+==================
+TCPDUMP
+==================
+Run tcpdump on the interface facing the SRX/Junos Device and add whatever 
+flag you would like to capture the data you want:
+
+ie:
+tcpdump -i enp0s8 -vvv -n "ip multicast" -w mcast_dense.pcap
+
+The above captures all IP Multicast traffic on interface enp0s8 and 
+created and read to the file mcast_dense.pcap with maximum amount of 
+detail and shows the line count in read time on screen.
+
+=================
+Vertification
+=================
+root@srx2> show forwarding-options port-mirroring detail
+Instance Name: &global_instance
+  Instance Id: 1
+  Input parameters:
+    Rate                  : 1
+    Run-length            : 1
+    Maximum-packet-length : 0
+  Output parameters:
+    Family      State     Destination          Next-hop
+    inet        up        ge-0/0/3.0           192.168.5.20

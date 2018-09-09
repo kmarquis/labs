@@ -1,0 +1,272 @@
+CoS Lab
+======================================
+BASE CoS CONFIG
+======================================
+root@srx1> show configuration class-of-service
+classifiers {
+    dscp CLASSIFIER-DSCP-EA {
+        forwarding-class PRIORITY1 {
+            loss-priority low code-points DSCP-PRIORITY1;
+        }
+        forwarding-class NETWORK-CONTROL {
+            loss-priority low code-points DSCP-NETWORK-CONTROL;
+        }
+        forwarding-class BEST-EFFORT {
+            loss-priority high code-points DSCP-BEST-EFFORT;
+        }
+        forwarding-class PRIORITY2 {
+            loss-priority low code-points DSCP-PRIORITY2;
+        }
+    }
+}
+code-point-aliases {
+    dscp {
+        DSCP-BEST-EFFORT 000000;
+        DSCP-PRIORITY1 100010;
+        DSCP-PRIORITY2 011010;
+        DSCP-NETWORK-CONTROL 110000;
+    }
+}
+drop-profiles {
+    DROP-PROFILE-BEST-EFFORT {
+        interpolate {
+            fill-level [ 0 50 75 90 95 ];
+            drop-probability [ 0 20 40 60 80 ];
+        }
+    }
+    DROP-PROFILE-PRIORITY2 {
+        interpolate {
+            fill-level [ 0 50 95 ];
+            drop-probability [ 0 5 10 ];
+        }
+    }
+}
+forwarding-classes {
+    queue 0 BEST-EFFORT;
+    queue 1 PRIORITY2;
+    queue 2 PRIORITY1;
+    queue 3 NETWORK-CONTROL;
+}
+interfaces {
+    ge-0/0/2 {
+        unit 0 {
+            classifiers {
+                dscp CLASSIFIER-DSCP-EA;
+            }
+            rewrite-rules {
+                dscp DSCP-REWRITE;
+            }
+        }
+    }
+    ge-0/0/4 {
+        unit 0 {
+            classifiers {
+                dscp CLASSIFIER-DSCP-EA;
+            }
+            rewrite-rules {
+                dscp DSCP-REWRITE;
+            }
+        }
+    }
+}
+rewrite-rules {
+    dscp DSCP-REWRITE {
+        forwarding-class BEST-EFFORT {
+            loss-priority low code-point DSCP-BEST-EFFORT;
+        }
+        forwarding-class PRIORITY1 {
+            loss-priority low code-point DSCP-PRIORITY1;
+        }
+        forwarding-class PRIORITY2 {
+            loss-priority low code-point DSCP-PRIORITY2;
+        }
+        forwarding-class NETWORK-CONTROL {
+            loss-priority low code-point DSCP-NETWORK-CONTROL;
+        }
+    }
+}
+scheduler-maps {
+    SCHEDULER-MAP-NML {
+        forwarding-class BEST-EFFORT scheduler SCHEDULER-BEST-EFFORT;
+        forwarding-class NETWORK-CONTROL scheduler SCHEDULER-NETWORK-CONTROL;
+        forwarding-class PRIORITY1 scheduler SCHEDULER-PRIORITY1;
+        forwarding-class PRIORITY2 scheduler SCHEDULER-PRIORITY2;
+    }
+}
+schedulers {
+    SCHEDULER-BEST-EFFORT {
+        transmit-rate {
+            remainder;
+        }
+        priority low;
+        drop-profile-map loss-priority high protocol any drop-profile DROP-PROFILE-BEST-EFFORT;
+    }
+    SCHEDULER-NETWORK-CONTROL {
+        transmit-rate percent 5;
+        priority high;
+    }
+    SCHEDULER-PRIORITY1 {
+        transmit-rate percent 5;
+        priority medium-high;
+    }
+    SCHEDULER-PRIORITY2 {
+        transmit-rate percent 5;
+        priority medium-low;
+        drop-profile-map loss-priority high protocol any drop-profile DROP-PROFILE-PRIORITY2;
+    }
+}
+======================================
+DSCP MARKINGS
+======================================
+root@srx1> show class-of-service code-point-aliases dscp
+Code point type: dscp
+  Alias              Bit pattern
+  DSCP-BEST-EFFORT   000000
+  DSCP-NETWORK-CONTROL 110000
+  DSCP-PRIORITY1     100010
+  DSCP-PRIORITY2     011010
+
+
+Lab 1: DSCP REWRITING
+======================================
+FIREWALL COUNTER
+======================================
+root@srx1> show firewall
+
+Filter: CoS
+Counters:
+Name                                                Bytes              Packets
+cos_be                                                  0                    0
+
+Filter: __default_bpdu_filter__
+======================================
+FIREWALL FILTER
+======================================
+root@srx1> show configuration firewall
+family inet {
+    filter CoS {
+        term cos {
+            from {
+                source-address {
+                    192.168.1.0/24;
+                }
+            }
+            then {
+                count cos_be;
+                forwarding-class PRIORITY1;
+                accept;
+            }
+        }
+        term accept {
+            then accept;
+        }
+    }
+}
+======================================
+WAN LINK  SRX1
+======================================
+root@srx1> show interfaces ge-0/0/4 extensive
+Physical interface: ge-0/0/4, Enabled, Physical link is Up
+  Egress queues: 8 supported, 4 in use
+  Queue counters:       Queued packets  Transmitted packets      Dropped packets
+    0 BEST-EFFORT                   54                   54                    0
+    1 PRIORITY2                      0                    0                    0
+    2 PRIORITY1                      0                    0                    0
+    3 NETWORK-CONT                  77                   77                    0
+======================================
+HOST LINK SRX2
+======================================
+root@srx3> show interfaces ge-0/0/2 extensive
+Physical interface: ge-0/0/2, Enabled, Physical link is Up
+  Egress queues: 8 supported, 4 in use
+  Queue counters:       Queued packets  Transmitted packets      Dropped packets
+    0 BEST-EFFORT                    0                    0                    0
+    1 PRIORITY2                      0                    0                    0
+    2 PRIORITY1                      0                    0                    0
+    3 NETWORK-CONT                   9                    9                    0
+======================================
+EXPECT TOS MARKING FROM TCPDUMP
+======================================
+136    0x88    10001000    100    4    FlashOverride    0    1    0    100010    0x22    34
+https://www.tucny.com/Home/dscp-tos
+
+
+Results
+======================================
+FIREWALL COUNTER
+======================================
+root@srx1> show firewall
+
+Filter: CoS
+Counters:
+Name                                                Bytes              Packets
+cos_be                                                420                    5
+
+Filter: __default_bpdu_filter__
+======================================
+WAN LINK SRX1
+======================================
+root@srx1> show interfaces ge-0/0/4 extensive
+Physical interface: ge-0/0/4, Enabled, Physical link is Up
+  Egress queues: 8 supported, 4 in use
+  Queue counters:       Queued packets  Transmitted packets      Dropped packets
+    0 BEST-EFFORT                  110                  110                    0
+    1 PRIORITY2                      0                    0                    0
+    2 PRIORITY1                      5                    5                    0
+    3 NETWORK-CONT                 157                  157                    0
+======================================
+HOST LINK SRX2
+======================================
+root@srx3> show interfaces ge-0/0/2 extensive
+Physical interface: ge-0/0/2, Enabled, Physical link is Up
+  Egress queues: 8 supported, 4 in use
+  Queue counters:       Queued packets  Transmitted packets      Dropped packets
+    0 BEST-EFFORT                    1                    1                    0
+    1 PRIORITY2                      0                    0                    0
+    2 PRIORITY1                      5                    5                    0
+    3 NETWORK-CONT                  16                   16                    0
+======================================
+SOURCE HOST with NO MARKINGS SET
+======================================
+vagrant@hosts1:~$ ping 192.168.2.20
+PING 192.168.2.20 (192.168.2.20) 56(84) bytes of data.
+64 bytes from 192.168.2.20: icmp_seq=1 ttl=62 time=1.94 ms
+64 bytes from 192.168.2.20: icmp_seq=2 ttl=62 time=2.27 ms
+64 bytes from 192.168.2.20: icmp_seq=3 ttl=62 time=2.37 ms
+64 bytes from 192.168.2.20: icmp_seq=4 ttl=62 time=2.59 ms
+64 bytes from 192.168.2.20: icmp_seq=5 ttl=62 time=2.47 ms
+^C
+--- 192.168.2.20 ping statistics ---
+5 packets transmitted, 5 received, 0% packet loss, time 4009ms
+rtt min/avg/max/mdev = 1.947/2.332/2.591/0.223 ms
+======================================
+DESTINATION HOST with MARKINGS
+======================================
+root@hosts2:~# tcpdump -vvv -i enp0s8 -n 'ip and ip[1] & 0xfc == 136'
+tcpdump: listening on enp0s8, link-type EN10MB (Ethernet), capture size 262144 bytes
+12:31:13.179546 IP (tos 0x88, ttl 62, id 59800, offset 0, flags [DF], proto ICMP (1), length 84)
+    192.168.1.20 > 192.168.2.20: ICMP echo request, id 14629, seq 1, length 64
+12:31:13.179578 IP (tos 0x88, ttl 64, id 19836, offset 0, flags [none], proto ICMP (1), length 84)
+    192.168.2.20 > 192.168.1.20: ICMP echo reply, id 14629, seq 1, length 64
+12:31:14.181528 IP (tos 0x88, ttl 62, id 59914, offset 0, flags [DF], proto ICMP (1), length 84)
+    192.168.1.20 > 192.168.2.20: ICMP echo request, id 14629, seq 2, length 64
+12:31:14.181555 IP (tos 0x88, ttl 64, id 19990, offset 0, flags [none], proto ICMP (1), length 84)
+    192.168.2.20 > 192.168.1.20: ICMP echo reply, id 14629, seq 2, length 64
+12:31:15.184668 IP (tos 0x88, ttl 62, id 59966, offset 0, flags [DF], proto ICMP (1), length 84)
+    192.168.1.20 > 192.168.2.20: ICMP echo request, id 14629, seq 3, length 64
+12:31:15.184695 IP (tos 0x88, ttl 64, id 20018, offset 0, flags [none], proto ICMP (1), length 84)
+    192.168.2.20 > 192.168.1.20: ICMP echo reply, id 14629, seq 3, length 64
+12:31:16.187371 IP (tos 0x88, ttl 62, id 59974, offset 0, flags [DF], proto ICMP (1), length 84)
+    192.168.1.20 > 192.168.2.20: ICMP echo request, id 14629, seq 4, length 64
+12:31:16.187397 IP (tos 0x88, ttl 64, id 20108, offset 0, flags [none], proto ICMP (1), length 84)
+    192.168.2.20 > 192.168.1.20: ICMP echo reply, id 14629, seq 4, length 64
+12:31:17.188865 IP (tos 0x88, ttl 62, id 60144, offset 0, flags [DF], proto ICMP (1), length 84)
+    192.168.1.20 > 192.168.2.20: ICMP echo request, id 14629, seq 5, length 64
+12:31:17.188904 IP (tos 0x88, ttl 64, id 20220, offset 0, flags [none], proto ICMP (1), length 84)
+    192.168.2.20 > 192.168.1.20: ICMP echo reply, id 14629, seq 5, length 64
+
+
+Lab 2: CoS POLICING
+======================================
+BASE CoS CONFIG
+======================================

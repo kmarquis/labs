@@ -1,0 +1,145 @@
+Mutlicast request with no Source
+=================
+END HOST
+=================
+
+root@hosts1:~# iperf -s -u -B 239.1.139.1 -i 5
+------------------------------------------------------------
+Server listening on UDP port 5001
+Binding to local address 239.1.139.1
+Joining multicast group  239.1.139.1
+Receiving 1470 byte datagrams
+UDP buffer size:  208 KByte (default)
+------------------------------------------------------------
+
+=====================
+LAST HOP ROUTER (LHR)
+=====================
+
+root@srx1> show igmp group 239.1.139.1 detail
+Interface: ge-0/0/1.0, Groups: 1
+    Group: 239.1.139.1
+        Group mode: Exclude
+        Source: 0.0.0.0
+        Source timeout: 0
+        Last reported by: 192.168.1.20
+        Group timeout:     148 Type: Dynamic
+        Output interface: ge-0/0/1.0
+
+root@srx1> show pim join extensive
+Instance: PIM.master Family: INET
+R = Rendezvous Point Tree, S = Sparse, W = Wildcard
+
+Group: 239.1.139.1
+    Source: * <----- This is confirming, that this is (*,G) as there is NO source defined
+    RP: 192.168.100.2
+    Flags: sparse,rptree,wildcard
+    Upstream interface: ge-0/0/2.0 <------ This is the interface going toward the Multicast RP. This knows as the IIF
+    Upstream neighbor: 10.1.1.0 <------ This is the RPF address to the RP (The Next Hop IP address)
+    Upstream state: Join to RP <---- This tells you the state of the mulitcast join, If this has a flag of 'None' then is not Designated PIM router
+    Uptime: 00:03:29
+    Downstream neighbors: <---- This a list of interfaces that have made to request to join, this multicast group.
+        Interface: ge-0/0/1.0 
+            192.168.1.1 State: Join Flags: SRW  Timeout: Infinity <----- This shows the PIM enabled IP address NOT the requestors IP address
+            Uptime: 00:03:29 Time since last Join: 00:03:29
+
+Instance: PIM.master Family: INET6
+R = Rendezvous Point Tree, S = Sparse, W = Wildcard
+
+=====================
+Rendezvous Point  (RP)
+=====================
+root@srx2> show pim join extensive
+Instance: PIM.master Family: INET
+R = Rendezvous Point Tree, S = Sparse, W = Wildcard
+
+Group: 239.1.139.1
+    Source: *
+    RP: 192.168.100.2
+    Flags: sparse,rptree,wildcard
+    Upstream interface: Local
+    Upstream neighbor: Local
+    Upstream state: Local RP
+    Uptime: 00:03:12
+    Downstream neighbors:
+        Interface: ge-0/0/1.0
+            10.1.1.1 State: Join Flags: SRW Timeout: 198
+            Uptime: 00:03:12 Time since last Join: 00:00:12
+
+Instance: PIM.master Family: INET6
+R = Rendezvous Point Tree, S = Sparse, W = Wildcard
+
+===========================================================================================================
+Mutlicast with Source but no Recievers
+
+=================
+END HOST
+=================
+root@hosts4:~# iperf -c 239.1.139.1 -u -T 32 -t 5 -i 1
+------------------------------------------------------------
+Client connecting to 239.1.139.1, UDP port 5001
+Sending 1470 byte datagrams
+Setting multicast TTL to 32
+UDP buffer size:  208 KByte (default)
+------------------------------------------------------------
+[  3] local 192.168.3.20 port 59691 connected with 239.1.139.1 port 5001
+[ ID] Interval       Transfer     Bandwidth
+[  3]  0.0- 1.0 sec   128 KBytes  1.05 Mbits/sec
+[  3]  1.0- 2.0 sec   129 KBytes  1.06 Mbits/sec
+[  3]  2.0- 3.0 sec   128 KBytes  1.05 Mbits/sec
+[  3]  3.0- 4.0 sec   128 KBytes  1.05 Mbits/sec
+[  3]  4.0- 5.0 sec   128 KBytes  1.05 Mbits/sec
+[  3]  0.0- 5.0 sec   642 KBytes  1.05 Mbits/sec
+[  3] Sent 447 datagrams
+
+======================
+FIRST HOP ROUTER (FHR)
+======================
+
+root@srx3> show pim join extensive
+Instance: PIM.master Family: INET
+R = Rendezvous Point Tree, S = Sparse, W = Wildcard
+
+Group: 239.1.139.1
+    Source: 192.168.3.20 <------- This is confirming that this is a (S,G) as we have a defined Source within this Group
+    Flags: sparse,spt
+    Upstream interface: ge-0/0/3.0 <------- This is the interface that is connected to the Source of the Mutlicast Traffic (IIF)
+    Upstream neighbor: Direct <------- This confirms Mutlicast is coming directly from the source and not via another PIM neighbour
+    Upstream state: Local Source <------ linked with the above information, helps to confirm this is First Hop Router and the Source is directly connected
+    Keepalive timeout: 320
+    Uptime: 00:00:50
+    Downstream neighbors:
+        Interface: register to 192.168.100.2 on ppe0.32769
+
+Instance: PIM.master Family: INET6
+R = Rendezvous Point Tree, S = Sparse, W = Wildcard
+
+=====================
+Rendezvous Point  (RP)
+=====================
+
+root@srx2> show pim join extensive
+Instance: PIM.master Family: INET
+R = Rendezvous Point Tree, S = Sparse, W = Wildcard
+
+Instance: PIM.master Family: INET6
+R = Rendezvous Point Tree, S = Sparse, W = Wildcard
+
+root@srx2> show pim rps extensive
+Instance: PIM.master
+
+Address family INET
+
+RP: 192.168.100.2
+Learned via: static configuration
+Mode: Sparse
+Time Active: 14:31:04
+Holdtime: 150
+Device Index: 131
+Subunit: 32769
+Interface: ppd0.32769
+Static RP Override: Off
+Group Ranges:
+        224.0.0.0/4
+
+Address family INET6

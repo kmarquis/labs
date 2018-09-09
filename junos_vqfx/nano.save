@@ -1,0 +1,83 @@
+root@srx1>
+*** pim.log ***
+
+Jun 22 14:03:32.101821 EVENT:DS_JOIN
+sgnode: 239.1.139.1.0.0.0.0 Flags-sm:wc:rpt:
+        DSM: All macros empty
+        US-FSM: US State:NOT_JOINED
+        RPF: us interface - ge-0/0/2.0 nbr addr - 10.1.1.0
+J/P Attr: Flags:sm:wc:rpt: If:ge-0/0/1.0(p) Nbr:192.168.1.1 O:LOCAL-RCVR Ht:0 AS: 0
+DS-FSM: IF/NBR ge-0/0/1.0/192.168.1.1((L)) State NoInfo (NI) to Join (J)
+
+EVENT:DS_IMMEDIATE_OLIST_BECOMES_NON_NULL
+sg state: 239.1.139.1.0.0.0.0 Flags-sm:wc:rpt:
+        DSM: IMM_OLIST(*,g):NE
+        US-FSM: US State:NOT_JOINED
+        RPF: us interface - ge-0/0/2.0 nbr addr - 10.1.1.0
+US-FSM: US Event - JOIN_DESIRED_TRUE Current State - NOT_JOINED New State - JOINED
+US-FSM: RPF nbr old/new null/ge-0/0/2.0[10.1.1.0]
+US-FSM: SENDING TRIGGER JOIN
+US-FSM: SENDING PERIODIC JOIN
+Jun 22 14:03:32.114080 PIM ge-0/0/2.0 SENT 10.1.1.1 -> 224.0.0.13 V2 JoinPrune to 10.1.1.0 holdtime 210 groups 1 sum 0x283c len 34
+Jun 22 14:04:32.154255 PIM ge-0/0/2.0 SENT 10.1.1.1 -> 224.0.0.13 V2 JoinPrune to 10.1.1.0 holdtime 210 groups 1 sum 0x283c len 34
+
+root@srx2>
+*** pim.log ***
+Jun 22 16:16:09.336213 PIM ge-0/0/1.0 RECV 10.1.1.1 -> 224.0.0.13 V2 JoinPrune to 10.1.1.0 holdtime 210 groups 1 sum 0x283c len 34
+Jun 22 16:16:09.336438 task_timer_ucreate: created timer PIM.master_RxJoin  flags <>
+Jun 22 16:16:09.336458 task_timer_uset: timer PIM.master_RxJoin <Touched> set to offset 3:30 at 16:19:39
+Jun 22 16:17:09.376232 PIM ge-0/0/1.0 RECV 10.1.1.1 -> 224.0.0.13 V2 JoinPrune to 10.1.1.0 holdtime 210 groups 1 sum 0x283c len 34
+Jun 22 16:17:09.376395 task_timer_uset: timer PIM.master_RxJoin <Touched> set to offset 3:30 at 16:20:39
+
+root@srx3>
+*** pim.log ***
+
+Jun 22 14:02:55.202280 EVENT:RSLV_REQ
+Jun 22 14:02:55.202351  Addr: 239.1.139.1.192.168.3.20 On interface - ge-0/0/3.0(p) due_to_gr 0
+
+EVENT:KAT_TIMER_STARTED
+sg state: 239.1.139.1.192.168.3.20 Flags-sm:kat:
+        DSM: All macros empty
+        US-FSM: US State:NOT_JOINED(RPT_NOT_JOINED)
+        RPF: us interface - ge-0/0/3.0 nbr addr - 192.168.3.1
+
+EVENT:COULD_REGISTER_MACRO_MAY_CHANGE
+sg state: 239.1.139.1.192.168.3.20 Flags-sm:kat:
+        DSM: All macros empty
+        US-FSM: US State:NOT_JOINED(RPT_NOT_JOINED)
+        RPF: us interface - ge-0/0/3.0 nbr addr - 192.168.3.1
+RP-FSM:Could_Register(s,g) becomes TRUE
+
+EVENT:DS_JOIN
+sgnode: 239.1.139.1.192.168.3.20 Flags-sm:kat:
+        DSM: COULD_REG(s,g):TRUE
+        US-FSM: US State:NOT_JOINED(RPT_NOT_JOINED)
+        RPF: us interface - ge-0/0/3.0 nbr addr - 192.168.3.1
+J/P Attr: Flags:sm: If:ppe0.32769(p) Nbr:0.0.0.0 O:ON-PE-IF Ht:0 AS: 0
+DS-FSM: IF/NBR ppe0.32769/0.0.0.0((L)) State NoInfo (NI) to Join (J)
+
+EVENT:DS_IMMEDIATE_OLIST_BECOMES_NON_NULL
+sg state: 239.1.139.1.192.168.3.20 Flags-sm:kat:
+        DSM: IMM_OLIST(s,g):NE INH_OLIST(s,g):NE COULD_REG(s,g):TRUE
+        US-FSM: US State:NOT_JOINED(RPT_NOT_JOINED)
+        RPF: us interface - ge-0/0/3.0 nbr addr - 192.168.3.1
+US-FSM: Prerequisite fails us-ev JOIN_DESIRED_TRUE [src_local]
+
+EVENT:DS_INHERITED_SG_OLIST_BECOMES_NON_NULL
+sg state: 239.1.139.1.192.168.3.20 Flags-sm:kat:
+        DSM: IMM_OLIST(s,g):NE INH_OLIST(s,g):NE COULD_REG(s,g):TRUE
+        US-FSM: US State:NOT_JOINED(RPT_NOT_JOINED)
+        RPF: us interface - ge-0/0/3.0 nbr addr - 192.168.3.1
+US-FSM: Prerequisite fails us-ev JOIN_DESIRED_TRUE [src_local]
+
+EVENT:SPT_BIT_SET
+sg state: 239.1.139.1.192.168.3.20 Flags-sm:spt:kat:
+        DSM: IMM_OLIST(s,g):NE INH_OLIST(s,g):NE COULD_REG(s,g):TRUE
+        US-FSM: US State:NOT_JOINED(RPT_NOT_JOINED)
+        RPF: us interface - ge-0/0/3.0 nbr addr - 192.168.3.1
+
+EVENT:FWD_CACHE_CREATED
+sg state: 239.1.139.1.192.168.3.20 Flags-sm:spt:kat:
+        DSM: IMM_OLIST(s,g):NE INH_OLIST(s,g):NE COULD_REG(s,g):TRUE
+        US-FSM: US State:NOT_JOINED(RPT_NOT_JOINED)
+        RPF: us interface - ge-0/0/3.0 nbr addr - 192.168.3.1

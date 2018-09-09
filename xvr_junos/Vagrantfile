@@ -1,0 +1,134 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Check required plugins
+REQUIRED_PLUGINS = %w(vagrant-junos_cli vagrant-junos vagrant-host-shell)
+exit unless REQUIRED_PLUGINS.all? do |plugin|
+  Vagrant.has_plugin?(plugin) || (
+    puts "The #{plugin} plugin is required. Please install it with:"
+    puts "$ vagrant plugin install #{plugin}"
+    false
+  )
+end
+
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  # All Vagrant configuration is done here. The most common configuration
+  # options are documented and commented below. For a complete reference,
+  # please see the online documentation at vagrantup.com.
+
+  config.vm.define "cisco" do |cisco|
+    cisco.vm.synced_folder ".", "/vagrant", id: "vagrant-root", disabled: true
+    cisco.ssh.insert_key = false
+    cisco.vm.boot_timeout = 400
+    cisco.vm.network :private_network, virtualbox__intnet: "net1", auto_config: false #junos
+    cisco.vm.network :private_network, virtualbox__intnet: "net2", auto_config: false #junos
+    cisco.vm.network :private_network, virtualbox__intnet: "net4", auto_config: false #junos
+    cisco.vm.network :private_network, virtualbox__intnet: "net5", auto_config: false #junos
+    cisco.vm.box = "cisco/IOSxr"
+     cisco.vm.provider :virtualbox do |vb|
+        vb.customize ["modifyvm", :id, "--cpuexecutioncap", "50"]
+        vb.memory = 4096
+        # vb.cpus = 1
+        vb.gui = false
+      end
+ end
+
+    config.vm.define "eh1" do |eh1|
+        eh1.vm.box = "ubuntu/trusty64"
+        eh1.vm.hostname = "eh1"
+        eh1.vm.network 'private_network', ip: "192.168.70.10", :netmask => "255.255.255.0", virtualbox__intnet: "net4" # E11 - CE7
+        eh1.ssh.insert_key = true
+          eh1.vm.provider :virtualbox do |vb|
+            vb.memory = 256
+            vb.gui = false
+          end
+        eh1.vm.provision "shell", inline: <<-SHELL
+            sudo ip route add 192.168.0.0/16 via dev eth1
+            sudo ip route add 224.0.0.0/4 via dev eth1
+            sudo apt-get install lldpd iperf mtr -y
+          SHELL
+    end
+
+  config.vm.define "junos" do |junos|
+    junos.vm.network "private_network", virtualbox__intnet: "net1" # junos - P2
+    junos.vm.network "private_network", virtualbox__intnet: "net3" # junos - PE1
+    junos.vm.network "private_network", virtualbox__intnet: "net6" # junos - PE1
+    junos.vm.network "private_network", virtualbox__intnet: "net7" # junos - PE1
+    junos.vm.box = "juniper/ffp-12.1X47-D15.4-packetmode"
+      junos.vm.provider :virtualbox do |vb|
+        vb.name = "junos"
+        vb.memory = 1024
+        vb.gui = false
+      end
+  end
+
+    config.vm.define "eh2" do |eh2|
+        eh2.vm.box = "ubuntu/trusty64"
+        eh2.vm.hostname = "eh2"
+        eh2.vm.network 'private_network', ip: "192.168.70.20", :netmask => "255.255.255.0", virtualbox__intnet: "net6" # E11 - CE7
+        eh2.ssh.insert_key = true
+          eh2.vm.provider :virtualbox do |vb|
+            vb.memory = 256
+            vb.gui = false
+          end
+        eh2.vm.provision "shell", inline: <<-SHELL
+            sudo ip route add 192.168.0.0/16 via dev eth1
+            sudo ip route add 224.0.0.0/4 via dev eth1
+            sudo apt-get install lldpd iperf mtr -y
+          SHELL
+    end
+
+  config.vm.define "junos1" do |junos1|
+    junos1.vm.network "private_network", virtualbox__intnet: "net2" # junos1 - P2
+    junos1.vm.network "private_network", virtualbox__intnet: "net3" # junos1 - PE1
+    junos1.vm.network "private_network", virtualbox__intnet: "net8" # junos1 - PE1
+    junos1.vm.network "private_network", virtualbox__intnet: "net9" # junos1 - PE1
+    junos1.vm.box = "juniper/ffp-12.1X47-D15.4-packetmode"
+      junos1.vm.provider :virtualbox do |vb|
+        vb.name = "junos1"
+        vb.memory = 1024
+        vb.gui = false
+      end
+  end
+
+    config.vm.define "eh3" do |eh3|
+        eh3.vm.box = "ubuntu/trusty64"
+        eh3.vm.hostname = "eh3"
+        eh3.vm.network 'private_network', ip: "192.168.70.30", :netmask => "255.255.255.0", virtualbox__intnet: "net86" # E11 - CE7
+        eh3.ssh.insert_key = true
+          eh3.vm.provider :virtualbox do |vb|
+            vb.memory = 256
+            vb.gui = false
+          end
+        eh3.vm.provision "shell", inline: <<-SHELL
+            sudo ip route add 192.168.0.0/16 via dev eth1
+            sudo ip route add 224.0.0.0/4 via dev eth1
+            sudo apt-get install lldpd iperf mtr -y
+          SHELL
+    end
+
+ #  config.vm.define "nxos" do |nxos|
+ #    nxos.vm.synced_folder ".", "/vagrant", disabled: true
+ #    nxos.ssh.insert_key = false
+ #    nxos.vm.boot_timeout = 180
+ #    nxos.vm.box = "cisco/nxos"
+ #     nxos.vm.provider :virtualbox do |vb|
+ #        # vb.customize ["modifyvm", :id, "--cpuexecutioncap", "50"]
+ #        vb.customize "pre-boot", [
+ #                    "storageattach", :id,
+ #                    "--storagectl", "SATA",
+ #                    "--port", "1",
+ #                    "--device", "0",
+ #                    "--type", "dvddrive",
+ #                    "--medium", "/Users/kmarquis/vagrant/boxes/cisco/nxos/nxosv_config.iso",
+ #            ]
+ #        # vb.memory = 4096
+ #        # vb.cpus = 1
+ #        # vb.gui = false
+ #      end
+ # end
+
+end

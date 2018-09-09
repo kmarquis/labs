@@ -1,0 +1,134 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Check required plugins
+REQUIRED_PLUGINS = %w(vagrant-junos vagrant-host-shell)
+exit unless REQUIRED_PLUGINS.all? do |plugin|
+  Vagrant.has_plugin?(plugin) || (
+    puts "The #{plugin} plugin is required. Please install it with:"
+    puts "$ vagrant plugin install #{plugin}"
+    false
+  )
+end
+
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+VAGRANTFILE_API_VERSION = "2"
+
+## Generate a unique ID for this project
+UUID = "PNONRD"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  # All Vagrant configuration is done here. The most common configuration
+  # options are documented and commented below. For a complete reference,
+  # please see the online documentation at vagrantup.com.
+
+config.ssh.insert_key = false
+
+# This section is where the topology is defined. Vagrant will define what
+# the topology will look like. The file give instructions to VirtualBox
+# on how all the devices are connected. This is how the physical environment 
+# will be set up. Additionally resources are allocated to each VM 
+
+# Provder Egde Switch QFX1
+  # config.vm.define "qfxpfe" do |qfxpfe|
+  #   qfxpfe.ssh.insert_key = false
+  #   qfxpfe.vm.box = 'juniper/vqfx10k-pfe'
+
+  #   # DO NOT REMOVE / NO VMtools installed
+  #   qfxpfe.vm.synced_folder '.', '/vagrant', disabled: true
+  #   qfxpfe.vm.network 'private_network', auto_config: false, nic_type: '82540EM', virtualbox__intnet: "#{UUID}_vqfx_internal"
+  #   qfxpfe.vm.provider :virtualbox do |vb|
+  #     vb.name = "vqfx-qfxpfe"
+  #     vb.gui = false
+  #   end
+  # end
+
+  config.vm.define "qfx" do |qfx|
+    qfx.vm.network :forwarded_port, guest: 8080, host: 18080, id: 'https'
+    qfx.vm.network 'private_network', auto_config: false, nic_type: '82540EM', virtualbox__intnet: "#{UUID}_vqfx_internal"
+    qfx.vm.network 'private_network', auto_config: false, nic_type: '82540EM', virtualbox__intnet: "#{UUID}_reserved-bridge"
+    qfx.vm.network "private_network", auto_config: false, nic_type: '82540EM', virtualbox__intnet: "net1" # qfx - host
+    qfx.vm.network "private_network", auto_config: false, nic_type: '82540EM', virtualbox__intnet: "net2" # qfx - host
+    qfx.vm.network "private_network", auto_config: false, nic_type: '82540EM', virtualbox__intnet: "net10" # qfx - host
+    qfx.vm.box = "juniper/vqfx10k-re"
+    qfx.vm.synced_folder '.', '/vagrant', disabled: true
+      qfx.vm.provider :virtualbox do |vb|
+        vb.customize ["modifyvm", :id, "--nicpromisc3", "allow-all", "--nicpromisc4", "allow-all", "--nicpromisc5", "allow-all"]
+        vb.name = "qfx"
+        vb.gui = false
+      end
+  end
+
+  config.vm.define "qfx1" do |qfx1|
+    qfx1.vm.network :forwarded_port, guest: 8080, host: 18081, id: 'https'
+    qfx1.vm.network 'private_network', auto_config: false, nic_type: '82540EM', virtualbox__intnet: "#{UUID}_vqfx_internal"
+    qfx1.vm.network 'private_network', auto_config: false, nic_type: '82540EM', virtualbox__intnet: "#{UUID}_reserved-bridge"
+    qfx1.vm.network "private_network", auto_config: false, nic_type: '82540EM', virtualbox__intnet: "net2" # qfx - host
+    qfx1.vm.network "private_network", auto_config: false, nic_type: '82540EM', virtualbox__intnet: "net3" # qfx - host    
+    qfx1.vm.network "private_network", auto_config: false, nic_type: '82540EM', virtualbox__intnet: "net11" # qfx - host
+    qfx1.vm.box = "juniper/vqfx10k-re"
+    qfx1.vm.synced_folder '.', '/vagrant', disabled: true
+      qfx1.vm.provider :virtualbox do |vb|
+        vb.customize ["modifyvm", :id, "--nicpromisc3", "allow-all", "--nicpromisc4", "allow-all", "--nicpromisc5", "allow-all"]        
+        vb.name = "qfx1"
+        vb.gui = false
+      end
+  end
+
+
+  config.vm.define "qfx2" do |qfx2|
+    qfx2.vm.network :forwarded_port, guest: 8080, host: 18082, id: 'https'
+    qfx2.vm.network 'private_network', auto_config: false, nic_type: '82540EM', virtualbox__intnet: "#{UUID}_vqfx_internal"
+    qfx2.vm.network 'private_network', auto_config: false, nic_type: '82540EM', virtualbox__intnet: "#{UUID}_reserved-bridge"
+    qfx2.vm.network "private_network", auto_config: false, nic_type: '82540EM', virtualbox__intnet: "net1" # qfx - host
+    qfx2.vm.network "private_network", auto_config: false, nic_type: '82540EM', virtualbox__intnet: "net3" # qfx - host 
+    qfx2.vm.network "private_network", auto_config: false, nic_type: '82540EM', virtualbox__intnet: "net12" # qfx - host
+    qfx2.vm.box = "juniper/vqfx10k-re"
+    qfx2.vm.synced_folder '.', '/vagrant', disabled: true
+      qfx2.vm.provider :virtualbox do |vb|
+        vb.customize ["modifyvm", :id, "--nicpromisc3", "allow-all", "--nicpromisc4", "allow-all", "--nicpromisc5", "allow-all"]
+        vb.name = "qfx2"
+        vb.gui = false
+      end
+  end
+
+#  Host 4
+    config.vm.define "host4" do |host4|
+        host4.vm.box = "ubuntu/xenial64"
+        host4.vm.hostname = "host4"
+        host4.vm.network 'private_network', ip: "192.168.1.11", virtualbox__intnet: "net10" # host4 - qfx
+        host4.ssh.insert_key = true
+        host4.vm.provision "shell", inline: <<-SHELL
+        sudo ip route add 192.168.0.0/16 via 192.168.1.1 dev enp0s8
+        sudo ip route add 224.0.0.0/4 via 192.168.1.1 dev enp0s8
+        sudo apt-get install iperf 
+         SHELL
+    end
+
+#  Host 5
+    config.vm.define "host5" do |host5|
+        host5.vm.box = "ubuntu/xenial64"
+        host5.vm.hostname = "host5"
+        host5.vm.network 'private_network', ip: "192.168.2.11", virtualbox__intnet: "net11" # host5 - qfx
+        host5.ssh.insert_key = true
+        host5.vm.provision "shell", inline: <<-SHELL
+        sudo ip route add 192.168.0.0/16 via 192.168.2.1 dev enp0s8
+        sudo ip route add 224.0.0.0/4 via 192.168.2.1 dev enp0s8
+        sudo apt-get install iperf 
+         SHELL
+    end
+
+#  Host 6
+    config.vm.define "host6" do |host6|
+        host6.vm.box = "ubuntu/xenial64"
+        host6.vm.hostname = "host6"
+        host6.vm.network 'private_network', ip: "192.168.3.11", virtualbox__intnet: "net12" # host6 - qfx
+        host6.ssh.insert_key = true
+        host6.vm.provision "shell", inline: <<-SHELL
+        sudo ip route add 192.168.0.0/16 via 192.168.2.1 dev enp0s8
+        sudo ip route add 224.0.0.0/4 via 192.168.2.1 dev enp0s8
+        sudo apt-get install iperf 
+         SHELL
+        end
+
+end

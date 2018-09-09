@@ -1,0 +1,161 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Check required plugins
+REQUIRED_PLUGINS = %w(vagrant-junos vagrant-host-shell)
+exit unless REQUIRED_PLUGINS.all? do |plugin|
+  Vagrant.has_plugin?(plugin) || (
+    puts "The #{plugin} plugin is required. Please install it with:"
+    puts "$ vagrant plugin install #{plugin}"
+    false
+  )
+end
+
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  # All Vagrant configuration is done here. The most common configuration
+  # options are documented and commented below. For a complete reference,
+  # please see the online documentation at vagrantup.com.
+
+  config.vm.define "iosxe" do |iosxe|
+    iosxe.vm.synced_folder ".", "/vagrant", id: "vagrant-root", disabled: true
+    iosxe.ssh.insert_key = false
+    iosxe.vm.boot_timeout = 800
+    iosxe.vbguest.auto_update = false
+    iosxe.vm.box = "cisco/iosxe"
+     iosxe.vm.provider :virtualbox do |vb|
+     #    vb.customize ["modifyvm", :id, "--cpuexecutioncap", "25"]
+        vb.memory = 3048
+        vb.cpus = 2
+        vb.gui = false
+      end
+ end
+
+
+  config.vm.define "iosxr" do |iosxr|
+    iosxr.vm.synced_folder ".", "/vagrant", id: "vagrant-root", disabled: true
+    iosxr.ssh.insert_key = false
+    iosxr.vm.boot_timeout = 400
+    iosxr.vm.network :private_network, virtualbox__intnet: "net1", auto_config: false #junos
+    iosxr.vm.network :private_network, virtualbox__intnet: "net2", auto_config: false #eos
+    iosxr.vm.network :private_network, virtualbox__intnet: "net3", auto_config: false
+    iosxr.vm.network :private_network, virtualbox__intnet: "net9", auto_config: false
+    iosxr.vm.box = "cisco/IOSxr"
+     iosxr.vm.provider :virtualbox do |vb|
+        vb.customize ["modifyvm", :id, "--cpuexecutioncap", "50"]
+        vb.memory = 4096
+        vb.cpus = 1
+        vb.gui = false
+      end
+ end
+
+  config.vm.define "juniper" do |juniper|
+    juniper.vm.network "private_network", virtualbox__intnet: "net1" #cisco
+    juniper.vm.network "private_network", virtualbox__intnet: "net4" #eos
+    juniper.vm.network "private_network", virtualbox__intnet: "net5" 
+    juniper.vm.network "private_network", virtualbox__intnet: "net7"
+    juniper.vm.box = "juniper/ffp-12.1X47-D15.4-packetmode"
+      juniper.vm.provider :virtualbox do |vb|
+        # vb.customize ["modifyvm", :id, "--cpuexecutioncap", "10"]
+        vb.memory = 1024
+        vb.cpus = 1
+        vb.gui = false
+      end
+  end
+
+  config.vm.define "eos" do |eos|
+    eos.vm.box = "arista/veos"    
+    eos.vm.network :forwarded_port, guest: 443, host: 12443, id: 'https'
+    eos.vm.network "private_network", virtualbox__intnet: "link_1", ip: "169.254.1.11", auto_config: false
+    eos.vm.network "private_network", virtualbox__intnet: "link_2", ip: "169.254.1.11", auto_config: false    
+    eos.vm.network "private_network", virtualbox__intnet: "net2" #cisco
+    eos.vm.network "private_network", virtualbox__intnet: "net4" #junos
+    eos.vm.network "private_network", virtualbox__intnet: "net6" 
+    eos.vm.network "private_network", virtualbox__intnet: "net8"
+       eos.vm.provider :virtualbox do |vb|
+         # vb.customize ["modifyvm", :id, "--cpuexecutioncap", "10"]
+         vb.customize ['modifyvm', :id, '--nic2', 'intnet', '--intnet2', 'vEOS-intnet1']
+         vb.customize ['modifyvm', :id, '--nic3', 'intnet', '--intnet3', 'vEOS-intnet2']
+         vb.memory = 2048
+         vb.cpus = 1
+         vb.gui = false
+       end
+  end
+
+    config.vm.define "host1" do |host1|
+        host1.vm.box = "ubuntu/trusty64"
+        host1.vm.hostname = "host1"
+        host1.vm.network 'private_network', ip: "192.168.70.160", :netmask => "255.255.255.192", virtualbox__intnet: "net3"
+        host1.ssh.insert_key = true
+          host1.vm.provider :virtualbox do |vb|
+            vb.customize ["modifyvm", :id, "--cpuexecutioncap", "10"]
+            vb.memory = 256
+            vb.cpus = 1
+            vb.gui = false
+          end
+        # host1.vm.provision "shell", inline: <<-SHELL
+        #     sudo ip route add 192.168.0.0/16 via 192.168.70.129 dev eth1
+        #     sudo ip route add 224.0.0.0/4 via 192.168.70.129 dev eth1
+        #     sudo apt-get install lldpd iperf mtr -y
+        #   SHELL
+    end
+   
+    config.vm.define "host2" do |host2|
+        host2.vm.box = "ubuntu/trusty64"
+        host2.vm.hostname = "host2"
+        host2.vm.network 'private_network', ip: "192.168.70.160", :netmask => "255.255.255.192", virtualbox__intnet: "net5" 
+        host2.ssh.insert_key = true
+          host2.vm.provider :virtualbox do |vb|
+            vb.customize ["modifyvm", :id, "--cpuexecutioncap", "10"]
+            vb.memory = 256
+            vb.cpus = 1
+            vb.gui = false
+          end
+        # host2.vm.provision "shell", inline: <<-SHELL
+        #     sudo ip route add 192.168.0.0/16 via 192.168.70.129 dev eth1
+        #     sudo ip route add 224.0.0.0/4 via 192.168.70.129 dev eth1
+        #     sudo apt-get install lldpd iperf mtr -y
+        #   SHELL
+    end
+
+    config.vm.define "host3" do |host3|
+        host3.vm.box = "ubuntu/trusty64"
+        host3.vm.hostname = "host3"
+        host3.vm.network 'private_network', ip: "192.168.70.160", :netmask => "255.255.255.192", virtualbox__intnet: "net6" 
+        host3.ssh.insert_key = true
+          host3.vm.provider :virtualbox do |vb|
+            vb.customize ["modifyvm", :id, "--cpuexecutioncap", "10"]
+            vb.memory = 256
+            vb.cpus = 1
+            vb.gui = false
+          end
+        # host3.vm.provision "shell", inline: <<-SHELL
+        #     sudo ip route add 192.168.0.0/16 via 192.168.70.129 dev eth1
+        #     sudo ip route add 224.0.0.0/4 via 192.168.70.129 dev eth1
+        #     sudo apt-get install lldpd iperf mtr -y
+        #   SHELL
+    end
+#   config.vm.provision "ansible" do |ansible|
+#     ansible.groups = {
+#       "junos" => [
+#          "juniper",
+#       ],
+#       "eos" => [
+#          "eos",
+#       ],
+#       "cisco" => [
+#          "cisco",
+#       ],
+#       "ubuntu" => [
+#          "host1",
+#          "host2",
+#          "host3",
+#       ],
+#     }
+#     ansible.playbook = "multi_vendor.yml"
+# #    ansible.verbose = "vvv"
+#   end
+
+end
