@@ -1,0 +1,124 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Check required plugins
+REQUIRED_PLUGINS = %w(vagrant-junos_cli vagrant-junos vagrant-host-shell)
+exit unless REQUIRED_PLUGINS.all? do |plugin|
+  Vagrant.has_plugin?(plugin) || (
+    puts "The #{plugin} plugin is required. Please install it with:"
+    puts "$ vagrant plugin install #{plugin}"
+    false
+  )
+end
+
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  # All Vagrant configuration is done here. The most common configuration
+  # options are documented and commented below. For a complete reference,
+  # please see the online documentation at vagrantup.com.
+
+# This section is where the topology is defined. Vagrant will define what
+# the topology will look like. The file give instructions to VirtualBox
+# on how all the vSRXs are connected. This is how the physical environment 
+# will be set up. Additionally resources are allocated to each VM 
+
+# Jump Box 1
+    config.vm.define "host1" do |host1|
+        host1.vm.box = "ubuntu/xenial64"
+        host1.vm.hostname = "host1"
+        host1.vm.network 'private_network', ip: "192.168.1.20", virtualbox__intnet: "net1" # host1 - SRX1
+        host1.ssh.insert_key = true
+          host1.vm.provider :virtualbox do |vb|
+            vb.memory = 512
+            vb.gui = false
+          end
+        host1.vm.provision "shell", inline: <<-SHELL
+        sudo ip route add 172.168.0.0/16 via 192.168.1.1 dev enp0s8
+         SHELL
+    end
+
+# Jump Box 3
+    config.vm.define "host3" do |host3|
+        host3.vm.box = "ubuntu/xenial64"
+        host3.vm.hostname = "host3"
+        host3.vm.network 'private_network', ip: "192.168.2.20", virtualbox__intnet: "net5" # host3 - SRX1
+        host3.ssh.insert_key = true
+          host3.vm.provider :virtualbox do |vb|
+            vb.memory = 512
+            vb.gui = false
+          end
+        host3.vm.provision "shell", inline: <<-SHELL
+        sudo ip route add 172.168.0.0/16 via 192.168.2.1 dev enp0s8
+         SHELL
+    end
+
+# SRX 1
+  config.vm.define "srx1" do |srx1|
+    srx1.vm.network "private_network", virtualbox__intnet: "net1" # SRX1 - host1
+    srx1.vm.network "private_network", virtualbox__intnet: "net2" # SRX1 - SRX2
+    srx1.vm.network "private_network", virtualbox__intnet: "net5" # SRX1 - host3
+    srx1.vm.box = "juniper/ffp-12.1X47-D15.4"
+      srx1.vm.provider :virtualbox do |vb|
+        vb.memory = 512
+        vb.gui = false
+      end
+    srx1.vm.provision "junos_cli", path: 'config/srx1.cmd'
+  end
+
+# SRX 2
+  config.vm.define "srx2" do |srx2|
+    srx2.vm.network "private_network", virtualbox__intnet: "net2" # SRX2 - SRX1
+    srx2.vm.network "private_network", virtualbox__intnet: "net3" # SRX2 - SRX3
+    srx2.vm.box = "juniper/ffp-12.1X47-D15.4-packetmode"
+      srx2.vm.provider :virtualbox do |vb|
+        vb.memory = 512
+        vb.gui = false
+      end
+    srx2.vm.provision "junos_cli", path: 'config/srx2.cmd'
+  end
+
+# SRX 3
+  config.vm.define "srx3" do |srx3|
+    srx3.vm.network "private_network", virtualbox__intnet: "net3" # SRX3 - SRX2
+    srx3.vm.network "private_network", virtualbox__intnet: "net4" # SRX3 - host2
+    srx3.vm.network "private_network", virtualbox__intnet: "net6" # SRX3 - host4
+    srx3.vm.box = "juniper/ffp-12.1X47-D15.4"
+      srx3.vm.provider :virtualbox do |vb|
+        vb.memory = 512
+        vb.gui = false
+      end
+    srx3.vm.provision "junos_cli", path: 'config/srx3.cmd'
+  end
+
+# Jump Box 2
+    config.vm.define "host2" do |host2|
+        host2.vm.box = "ubuntu/xenial64"
+        host2.vm.hostname = "host2"
+        host2.vm.network 'private_network', ip: "172.168.1.20", virtualbox__intnet: "net4" # host2 - SRX3
+        host2.ssh.insert_key = true
+          host2.vm.provider :virtualbox do |vb|
+            vb.memory = 512
+            vb.gui = false
+          end
+        host2.vm.provision "shell", inline: <<-SHELL
+        sudo ip route add 192.168.0.0/16 via 172.168.1.1 dev enp0s8
+         SHELL
+    end
+
+# Jump Box 4
+    config.vm.define "host4" do |host4|
+        host4.vm.box = "ubuntu/xenial64"
+        host4.vm.hostname = "host4"
+        host4.vm.network 'private_network', ip: "172.168.2.20", virtualbox__intnet: "net6" # host4 - SRX1
+        host4.ssh.insert_key = true
+          host4.vm.provider :virtualbox do |vb|
+            vb.memory = 512
+            vb.gui = false
+          end
+	      host4.vm.provision "shell", inline: <<-SHELL
+        sudo ip route add 192.168.0.0/16 via 172.168.2.1 dev enp0s8
+         SHELL
+         end
+  end
