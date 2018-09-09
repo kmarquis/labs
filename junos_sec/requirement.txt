@@ -3,7 +3,7 @@ bcrypt==3.1.4
 certifi==2018.1.18
 cffi==1.11.5
 chardet==3.0.4
-cryptography==2.1.4
+cryptography==2.3
 future==0.16.0
 idna==2.6
 ipaddress==1.0.19
@@ -16,7 +16,7 @@ napalm==2.3.0
 ncclient==0.5.3
 netaddr==0.7.19
 netmiko==2.0.2
-paramiko==2.4.0
+paramiko==2.4.1
 prettyprint==0.1.5
 prettytable==0.7.2
 psycopg2==2.7.4
