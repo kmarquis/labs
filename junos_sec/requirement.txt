@@ -3,7 +3,7 @@ bcrypt==3.1.4
 certifi==2018.1.18
 cffi==1.11.5
 chardet==3.0.4
-cryptography==3.2
+cryptography==39.0.1
 future==0.16.0
 idna==2.6
 ipaddress==1.0.19
